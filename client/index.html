@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="synthwave">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    <style>
+      /* Apply critical styles directly in the <style> tag */
+      html,
+      body {
+        overflow: hidden; /* Locks scrolling */
+        overscroll-behavior: none; /* Disables bounce/pull-to-refresh */
+      }
+    </style>
+    <title>Aidan.House</title>
+  </head>
+  <body
+    class="overscroll-none"
+    style="
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    "
+  >
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+
+    <script>
+      // Additional JavaScript to disable double-tap and pinch zoom
+      document.addEventListener("gesturestart", (e) => e.preventDefault()); // Prevent pinch-zooming
+      document.addEventListener("dblclick", (e) => e.preventDefault()); // Prevent double-tap zooming
+    </script>
+  </body>
+</html>
