@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Route, Routes, BrowserRouter as Router } from "react-router-dom";
-import { Login } from "./pages/Login";
+import { Home } from "./pages/Home";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -9,7 +9,7 @@ function App() {
     <div>
       <Router>
         <Routes>
-          <Route path="/*" element={<Login />} />
+          <Route path="/*" element={<Home />} />
         </Routes>
       </Router>
     </div>

@@ -2,38 +2,34 @@
 
 sinple WebRTC implementation
 
+`ffmpeg -list_devices true -f dshow -i dummy`
+
+# Start RTC server
+
 ## Linux command
 
 ```
-ffmpeg \
-  -f v4l2 -i /dev/video0 \  # Camera input
-  -f alsa -i hw:1 \  # Microphone input (adjust based on your system setup)
-  -c:v vp8 \  # VP8 codec for video
-  -c:a libopus \  # Opus codec for audio
-  -b:a 128k \  # Audio bitrate (adjust as needed)
-  -b:v 1M \  # Video bitrate (adjust as needed)
-  -f webm \  # Output format WebM for WebCodecs compatibility
-  -g 30 \  # Keyframe interval for video (adjust as needed)
-  -r 30 \  # Frame rate (adjust as needed)
-  -async 1 \  # Ensure audio and video sync
-  -vsync 2 \  # Video sync mode
-  -f webm - | websocat ws://yourwebsocketserver  # Pipe to WebSocket
+
 ```
 
 ## windows command
 
 ```
-ffmpeg ^
-  -f dshow -i video="Aidan's S23 (Windows Virtual Camera)"^
-  -f dshow -i audio="Your Audio Device Name"^  # Microphone input (adjust for your device)
-  -c:v vp8^  # VP8 codec for video
-  -c:a libopus^  # Opus codec for audio
-  -b:a 128k^  # Audio bitrate (adjust as needed)
-  -b:v 1M^  # Video bitrate (adjust as needed)
-  -f webm^  # Output format WebM for WebCodecs compatibility
-  -g 30^  # Keyframe interval for video (adjust as needed)
-  -r 30^  # Frame rate (adjust as needed)
-  -async 1^  # Ensure audio and video sync
-  -vsync 2^  # Video sync mode
-  -f webm - | websocketd --ws-url=ws://localhost:5000/relay
+ffmpeg -f dshow -i video="FHD Camera" -f dshow -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -c:v vp8 -pix_fmt yuv420p -crf 28 -c:a libopus -s 640x360 -r 15 -rtbufsize 1G -f rtp_mpegts rtp://127.0.0.1:5004
+
+high speed and performance:
+
+ffmpeg -f dshow -i video="FHD Camera" -f dshow -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" ^
+  -c:v vp8 -pix_fmt yuv420p -crf 23 -preset ultrafast -c:a libopus -s 640x360 -r 15 ^
+  -rtbufsize 2G -f rtp_mpegts rtp://127.0.0.1:5005
+
+```
+
+## test reciving the data
+
+```
+ffmpeg -loglevel debug -i rtp://127.0.0.1:5005?localaddr=127.0.0.1 -c:v vp8 -c:a opus -f wmv output.wmv
+
+
+
 ```
