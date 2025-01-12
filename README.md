@@ -15,21 +15,46 @@ sinple WebRTC implementation
 ## windows command
 
 ```
-ffmpeg -f dshow -i video="FHD Camera" -f dshow -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -c:v vp8 -pix_fmt yuv420p -crf 28 -c:a libopus -s 640x360 -r 15 -rtbufsize 1G -f rtp_mpegts rtp://127.0.0.1:5004
 
-high speed and performance:
 
-ffmpeg -f dshow -i video="FHD Camera" -f dshow -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" ^
-  -c:v vp8 -pix_fmt yuv420p -crf 23 -preset ultrafast -c:a libopus -s 640x360 -r 15 ^
-  -rtbufsize 2G -f rtp_mpegts rtp://127.0.0.1:5005
+# mpeg ts data
+
+ffmpeg -f dshow -framerate 30 -i video="FHD Camera":audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -vcodec libx264 -pix_fmt yuv420p -crf 23 -preset ultrafast -s 640x360 -rtbufsize 1M -f rtp_mpegts -acodec libopus -colorspace bt709 -color_range tv rtp://127.0.0.1:5005
+
+# opus and h264 data
+
+video:
+ffmpeg -f dshow -framerate 30 -i video="FHD Camera" -vcodec libx264 -pix_fmt yuv420p -crf 23 -preset ultrafast -s 640x360 -rtbufsize 1M -f rtp rtp://127.0.0.1:5005
+
+video + sdp_file
+ffmpeg -f dshow -framerate 30 -i video="FHD Camera" -vcodec libx264 -pix_fmt yuv420p -crf 23 -preset ultrafast -s 640x360 -rtbufsize 1M -f rtp -sdp_file video.sdp rtp://127.0.0.1:5005
+
+
+audio:
+ffmpeg -f dshow -framerate 30 -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -acodec libopus -f rtp rtp://127.0.0.1:5006
+
+audio + sdp_file
+ffmpeg -f dshow -framerate 30 -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -acodec libopus -f rtp -sdp_file audio.sdp rtp://127.0.0.1:5006
 
 ```
 
 ## test reciving the data
 
 ```
-ffmpeg -loglevel debug -i rtp://127.0.0.1:5005?localaddr=127.0.0.1 -c:v vp8 -c:a opus -f wmv output.wmv
+# mpeg_ts input
 
+ffmpeg -i rtp://127.0.0.1:5005 -c:v wmv2 -c:a wmav2 -b:v 1024k -b:a 192k -flush_packets 0 output.wmv
 
+audio only:
+ffmpeg -i rtp://127.0.0.1:5005 -map 0:a -c:a wmav2 -b:a 192k -flush_packets 0 output.wmv
+
+video only:
+ffmpeg -i rtp://127.0.0.1:5005 -map 0:v -c:v wmv2 -b:v 1024k -flush_packets 0 output.wmv
+
+# h264 input (need correct sdp file)
+ffmpeg -protocol_whitelist file,crypto,data,rtp,udp -i video.sdp -c copy -f mpegts output_video.ts
+
+# opus input (need correct sdp file)
+ffmpeg -protocol_whitelist file,crypto,data,rtp,udp -i audio.sdp -c:a copy -f ogg output_audio.ogg
 
 ```
