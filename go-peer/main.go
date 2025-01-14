@@ -4,12 +4,86 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"peer/dialer"
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
 )
 
 func main() {
+	d := dialer.NewDialer("ws://localhost:6789/relay")
+	go d.Dial()
+
+	// for count < 10 {
+	// 	d.Send("hello world")
+	// 	time.Sleep(1 * time.Second)
+	// 	count += 1
+	// }
+
+	// Use the exposed channel to listen for messages
+	// channel := d.GetChannel()
+	// for msg := range channel {
+	// 	log.Printf("Received message: %s\n", msg)
+	// }
+
+	err := getICECandidates(doThing)
+	if err != nil {
+		panic(err)
+	}
+
+}
+func doThing(b []byte) {
+	fmt.Println(b)
+}
+
+func getICECandidates(onIceCandidateFunction func(b []byte)) error {
+	configuration := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"}, // Google's public STUN server
+			},
+		},
+	}
+
+	peerConnection, err := webrtc.NewPeerConnection(configuration)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 3. Add media tracks (audio/video)
+	// peerConnection.AddTrack(track) // Add your tracks here
+
+	// 4. Gather ICE candidates (automatically handled)
+	peerConnection.OnICECandidate(func(c *webrtc.ICECandidate) {
+		// defer candidatesGathered.Done()
+		if c == nil {
+			return
+		}
+
+		onIceCandidateFunction([]byte("hsas"))
+
+		fmt.Println("CANDIDATE GATHERED")
+		fmt.Println(c)
+	})
+
+	offer, err := peerConnection.CreateOffer(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = peerConnection.SetLocalDescription(offer)
+	if err != nil {
+		log.Fatal("Failed to set local description:", err)
+	}
+
+	// candidatesGathered.Wait()
+
+	select {}
+
+	return nil
+}
+
+func connectToStreams() {
 	// Listen on UDP port 5004
 	addr := "127.0.0.1:5005"
 	conn, err := net.ListenPacket("udp", addr)
@@ -17,13 +91,6 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %v", addr, err)
 	}
 	defer conn.Close()
-
-	// config := webrtc.Configuration{}
-
-	// peerConnection, err := webrtc.NewPeerConnection(config)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 
 	videoTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/H264"}, "video", "rtcVideoStream")
 	if err != nil {
@@ -42,7 +109,6 @@ func main() {
 	go audioStreamer.startReader()
 
 	select {}
-
 }
 
 type RTPMediaStreamer struct {
