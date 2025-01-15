@@ -218,7 +218,13 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webr
 	go audioStreamer.startReader()
 
 	_, err = peerConnection.AddTrack(videoTrack)
+	if err != nil {
+		log.Fatal(err)
+	}
 	_, err = peerConnection.AddTrack(audioTrack)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var myAnswerOption webrtc.AnswerOptions
 	mySDP, err := peerConnection.CreateAnswer(&myAnswerOption)
