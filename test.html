@@ -1,0 +1,67 @@
+<!-- SEND TO WEBM ON FFMPEG -->
+<!-- ffmpeg -re -i input.mp4 -c:v libvpx -b:v 1M -c:a libopus -f webm udp://<server_address>:<port> -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebM Streaming</title>
+  </head>
+  <body>
+    <h1>WebM Streaming Example</h1>
+    <video id="video" controls autoplay></video>
+
+    <script>
+      async function startStreaming() {
+        // Step 1: Establish WebTransport connection
+        const url = "https://your-webtransport-server.example.com";
+        const transport = new WebTransport(url);
+
+        try {
+          await transport.ready;
+          console.log("WebTransport connected.");
+
+          // Step 2: Create a MediaSource for the video element
+          const mediaSource = new MediaSource();
+          const video = document.getElementById("video");
+          video.src = URL.createObjectURL(mediaSource);
+
+          // Step 3: Handle MediaSource events
+          mediaSource.addEventListener("sourceopen", async () => {
+            console.log("MediaSource opened.");
+            const sourceBuffer = mediaSource.addSourceBuffer(
+              'video/webm; codecs="vp9,opus"'
+            );
+
+            // Step 4: Read the WebM stream from WebTransport
+            const stream = await transport.datagrams.readable;
+            const reader = stream.getReader();
+
+            async function readStream() {
+              let done = false;
+
+              while (!done) {
+                const { value, done: streamDone } = await reader.read();
+                done = streamDone;
+
+                if (value) {
+                  sourceBuffer.appendBuffer(value);
+                }
+              }
+
+              // End the MediaSource when the stream is done
+              mediaSource.endOfStream();
+            }
+
+            readStream();
+          });
+        } catch (error) {
+          console.error("WebTransport connection failed:", error);
+        }
+      }
+
+      startStreaming();
+    </script>
+  </body>
+</html>
