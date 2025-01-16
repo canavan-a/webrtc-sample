@@ -190,8 +190,6 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webr
 		// Unlock the mutex after sending the candidate
 		Mutex.Unlock()
 
-		fmt.Println("CANDIDATE GATHERED")
-		fmt.Println(candidateMessage)
 	})
 
 	addr := "127.0.0.1:5005"
@@ -201,12 +199,27 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webr
 	}
 	defer conn.Close()
 
-	videoTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/H264"}, "video", "rtcVideoStream")
+	videoTrack, err := webrtc.NewTrackLocalStaticRTP(
+		webrtc.RTPCodecCapability{ClockRate: 90000, // Standard for H264
+			Channels:    1,                                              // Single channel for video
+			SDPFmtpLine: "profile-level-id=42e01f;packetization-mode=1", // Common SDP parameters for H264
+			RTCPFeedback: []webrtc.RTCPFeedback{
+				{Type: "nack"},
+				{Type: "nack", Parameter: "pli"},
+			}}, "video", "rtcVideoStream")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, "audio", "rtcAudiooStream")
+	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
+		MimeType:    "audio/opus",
+		ClockRate:   48000,                         // Standard for Opus
+		Channels:    2,                             // Stereo for Opus
+		SDPFmtpLine: "minptime=10; useinbandfec=1", // Common SDP parameters for Opus
+		RTCPFeedback: []webrtc.RTCPFeedback{
+			{Type: "nack"},
+			{Type: "nack", Parameter: "pli"},
+		}}, "audio", "rtcAudiooStream")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -226,18 +239,30 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webr
 		log.Fatal(err)
 	}
 
+	// Create an offer first to set remote description (you may need to adjust this depending on your setup)
+	_, err = peerConnection.CreateOffer(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var myAnswerOption webrtc.AnswerOptions
 	mySDP, err := peerConnection.CreateAnswer(&myAnswerOption)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("answer sdp IS: ", mySDP)
+
 	err = peerConnection.SetLocalDescription(mySDP)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	Mutex.Lock()
-	Clients[clientId].WebsocketConn.WriteMessage(websocket.TextMessage, []byte(mySDP.SDP))
+	err = Clients[clientId].WebsocketConn.WriteJSON(mySDP)
 	Mutex.Unlock()
+	if err != nil {
+		log.Fatal()
+	}
 
 	return peerConnection, nil
 
@@ -258,6 +283,7 @@ func CreateMediaStreamer(Port uint16, Hostname string, MimeType string, WebRTCTr
 
 func (s *RTPMediaStreamer) startReader() {
 	address := fmt.Sprintf("%s:%d", s.Hostname, s.Port)
+	fmt.Println("starting UDP stream on: " + address)
 
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
@@ -293,9 +319,6 @@ func (s *RTPMediaStreamer) startReader() {
 			log.Printf("Error adding pcket to track")
 			continue
 		}
-
-		fmt.Println(packet.SequenceNumber)
-		fmt.Println(packet.Payload)
 
 	}
 }

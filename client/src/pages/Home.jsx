@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const STUN_SERVERS = [
   "stun:stun.l.google.com:19302",
@@ -8,37 +8,74 @@ const STUN_SERVERS = [
 
 export const Home = () => {
   // webRTC logic here
+  const audioRef = useRef(null);
+  const videoRef = useRef(null);
 
-  const [peerConnection, setPeerConnection] = useState(null);
   const [offer, setOffer] = useState(null);
-  const [candidate, setCandidate] = useState(null);
   const signalingServer = new WebSocket("ws://localhost:6789/relay");
 
-  const start = async () => {
-    console.log("hello world");
-    const servers = {
-      iceServers: [
-        {
-          urls: [...STUN_SERVERS],
-        },
-      ],
-    };
-    const pc = new RTCPeerConnection(servers);
+  signalingServer.onopen = () => {
+    console.log("ws open");
+  };
+  const servers = {
+    iceServers: [
+      {
+        urls: [...STUN_SERVERS],
+      },
+    ],
+  };
+  const pc = new RTCPeerConnection(servers);
 
-    const dataChannel = pc.createDataChannel("dummyChannel");
+  const start = async () => {
+    // const dataChannel = pc.createDataChannel("dummyChannel");
+
+    const videoTrack = new RTCVideoTrack(); // This is a placeholder; you need to use actual track creation
+    const audioTrack = new RTCAudioTrack(); // Same for audio track
+
+    // Add the tracks to the PeerConnection
+    pc.addTrack(videoTrack);
+    pc.addTrack(audioTrack);
+
+    signalingServer.onmessage = (event) => {
+      const response = JSON.parse(event.data);
+      console.log(response);
+      if (response.type == "answer") {
+        console.log(response);
+        pc.setRemoteDescription(response);
+      } else if (response.type == "candidate") {
+        pc.addIceCandidate(response);
+      }
+    };
 
     const offer = await pc.createOffer();
     pc.setLocalDescription(offer);
 
+    signalingServer.send(JSON.stringify(offer));
+
     pc.onicecandidate = (event) => {
-      console.log("onicecandidate event triggered");
-
       if (event.candidate) {
-        console.log("ICE Candidate gathered: ", event.candidate);
         // Send ICE candidate to signaling server
-        setCandidate(event.candidate);
+        const payload = {
+          type: "candidate",
+          candidate: event.candidate.candidate,
+          sdpMid: event.candidate.sdpMid,
+          sdpMLineIndex: event.candidate.sdpMLineIndex,
+        };
+        signalingServer.send(JSON.stringify(payload));
+      }
+    };
 
-        console.log(event.candidate);
+    pc.ontrack = (event) => {
+      const stream = event.streams[0]; // Get the first MediaStream
+      console.log("Received stream:", stream);
+
+      // Attach the stream to an audio or video element
+      if (stream.getVideoTracks().length > 0) {
+        videoRef.current.srcObject = stream;
+      }
+
+      if (stream.getAudioTracks().length > 0) {
+        audioRef.current.srcObject = stream;
       }
     };
   };
@@ -47,11 +84,24 @@ export const Home = () => {
     <>
       <div className="w-full h-screen flex items-center justify-center">
         <p>
-          <strong>ICE Candidate:</strong>{" "}
-          {candidate ? JSON.stringify(candidate) : "Waiting for candidates..."}
           <button className="btn btn-md" onClick={start}>
             test
           </button>
+          <button
+            className="btn btn-md"
+            onClick={() => {
+              console.log(pc);
+            }}
+          >
+            pc test
+          </button>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="w-full h-auto"
+          />
+          <audio ref={audioRef} autoPlay></audio>
         </p>
       </div>
     </>
