@@ -192,15 +192,10 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webr
 
 	})
 
-	addr := "127.0.0.1:5005"
-	conn, err := net.ListenPacket("udp", addr)
-	if err != nil {
-		log.Fatalf("Failed to listen on %s: %v", addr, err)
-	}
-	defer conn.Close()
-
 	videoTrack, err := webrtc.NewTrackLocalStaticRTP(
-		webrtc.RTPCodecCapability{ClockRate: 90000, // Standard for H264
+		webrtc.RTPCodecCapability{
+			MimeType:    "video/H264",
+			ClockRate:   90000,                                          // Standard for H264
 			Channels:    1,                                              // Single channel for video
 			SDPFmtpLine: "profile-level-id=42e01f;packetization-mode=1", // Common SDP parameters for H264
 			RTCPFeedback: []webrtc.RTCPFeedback{
@@ -213,13 +208,13 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webr
 
 	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
 		MimeType:    "audio/opus",
-		ClockRate:   48000,                         // Standard for Opus
-		Channels:    2,                             // Stereo for Opus
-		SDPFmtpLine: "minptime=10; useinbandfec=1", // Common SDP parameters for Opus
+		ClockRate:   48000,                        // Standard for Opus
+		Channels:    2,                            // Stereo for Opus
+		SDPFmtpLine: "minptime=10;useinbandfec=1", // Common SDP parameters for Opus
 		RTCPFeedback: []webrtc.RTCPFeedback{
 			{Type: "nack"},
 			{Type: "nack", Parameter: "pli"},
-		}}, "audio", "rtcAudiooStream")
+		}}, "audio", "rtcAudioStream")
 	if err != nil {
 		log.Fatal(err)
 	}

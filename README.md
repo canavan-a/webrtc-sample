@@ -23,18 +23,15 @@ ffmpeg -f dshow -framerate 30 -i video="FHD Camera":audio="Microphone Array (Int
 
 # opus and h264 data
 
-video:
-ffmpeg -f dshow -framerate 30 -i video="FHD Camera" -vcodec libx264 -pix_fmt yuv420p -crf 23 -preset ultrafast -s 640x360 -rtbufsize 1M -f rtp rtp://127.0.0.1:5005
-
 video + sdp_file
-ffmpeg -f dshow -framerate 30 -i video="FHD Camera" -vcodec libx264 -pix_fmt yuv420p -crf 23 -preset ultrafast -s 640x360 -rtbufsize 1M -f rtp -sdp_file video.sdp rtp://127.0.0.1:5005
+ffmpeg -f dshow -framerate 30 -i video="FHD Camera" -vcodec libx264 -pix_fmt yuv420p -preset ultrafast -tune zerolatency -crf 23 -x264-params "keyint=30:min-keyint=30:scenecut=0" -s 640x360 -rtbufsize 64M -f rtp -sdp_file video.sdp rtp://127.0.0.1:5005
 
-
-audio:
-ffmpeg -f dshow -framerate 30 -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -acodec libopus -f rtp rtp://127.0.0.1:5006
 
 audio + sdp_file
-ffmpeg -f dshow -framerate 30 -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -acodec libopus -f rtp -sdp_file audio.sdp rtp://127.0.0.1:5006
+ffmpeg -f dshow -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -acodec libopus -b:a 64k -ar 48000 -ac 2 -application lowdelay -frame_duration 10 -rtbufsize 64M -preset ultrafast -tune zerolatency -f rtp -sdp_file audio.sdp rtp://127.0.0.1:5006
+
+
+
 
 ```
 

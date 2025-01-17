@@ -12,7 +12,7 @@ export const Home = () => {
   const videoRef = useRef(null);
 
   const [offer, setOffer] = useState(null);
-  const signalingServer = new WebSocket("ws://localhost:6789/relay");
+  const signalingServer = new WebSocket("ws://192.168.1.153:6789/relay");
 
   signalingServer.onopen = () => {
     console.log("ws open");
@@ -27,14 +27,7 @@ export const Home = () => {
   const pc = new RTCPeerConnection(servers);
 
   const start = async () => {
-    // const dataChannel = pc.createDataChannel("dummyChannel");
-
-    const videoTrack = new RTCVideoTrack(); // This is a placeholder; you need to use actual track creation
-    const audioTrack = new RTCAudioTrack(); // Same for audio track
-
-    // Add the tracks to the PeerConnection
-    pc.addTrack(videoTrack);
-    pc.addTrack(audioTrack);
+    const dataChannel = pc.createDataChannel("dummyChannel");
 
     signalingServer.onmessage = (event) => {
       const response = JSON.parse(event.data);
@@ -47,7 +40,12 @@ export const Home = () => {
       }
     };
 
-    const offer = await pc.createOffer();
+    const offerOptions = {
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: true,
+    };
+
+    const offer = await pc.createOffer(offerOptions);
     pc.setLocalDescription(offer);
 
     signalingServer.send(JSON.stringify(offer));
