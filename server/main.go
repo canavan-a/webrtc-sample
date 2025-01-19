@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -19,8 +20,17 @@ import (
 
 func main() {
 
-	// No longer using webrtc, using WS streaming
-	fmt.Println("Hello World")
+	// using WebRTC streaming with ws relay server
+	go func() {
+		fmt.Println("starting video stream")
+		err := StreamReader("video", "0.0.0.0", 5005)
+		panic(err)
+	}()
+	go func() {
+		fmt.Println("starting audio stream")
+		err := StreamReader("audio", "0.0.0.0", 5006)
+		panic(err)
+	}()
 
 	r := gin.Default()
 	err := godotenv.Load()
@@ -69,11 +79,11 @@ func handleRelayServer(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	uuid, err := uuid.NewUUID()
+	id, err := uuid.NewUUID()
 	if err != nil {
 		return
 	}
-	clientId := uuid.String()
+	clientId := id.String()
 
 	Mutex.Lock()
 	myC := Connection{
@@ -116,8 +126,19 @@ func handleRelayServer(c *gin.Context) {
 				}
 
 				// Initialize PeerConnection (if not already done)\
+				rid, err := uuid.NewUUID()
+				if err != nil {
+					return
+				}
+				rtcId := rid.String()
+				defer func() {
+					MediaMutex.Lock()
+					delete(AudioMediaMap, rtcId)
+					delete(VideoMediaMap, rtcId)
+					MediaMutex.Unlock()
+				}()
 
-				peerConnection, err := initPeerConnection(clientId, webrtcOffer)
+				peerConnection, err := initPeerConnection(clientId, webrtcOffer, rtcId)
 				if err != nil {
 					fmt.Println("Error initializing PeerConnection:", err)
 					continue
@@ -152,7 +173,13 @@ func handleRelayServer(c *gin.Context) {
 
 }
 
-func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webrtc.PeerConnection, error) {
+var (
+	AudioMediaMap = make(map[string]RTPMediaStreamer)
+	VideoMediaMap = make(map[string]RTPMediaStreamer)
+	MediaMutex    = sync.Mutex{}
+)
+
+func initPeerConnection(clientId string, offer webrtc.SessionDescription, rtcId string) (*webrtc.PeerConnection, error) {
 	configuration := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
@@ -208,9 +235,9 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webr
 
 	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
 		MimeType:    "audio/opus",
-		ClockRate:   48000,                        // Standard for Opus
-		Channels:    2,                            // Stereo for Opus
-		SDPFmtpLine: "minptime=10;useinbandfec=1", // Common SDP parameters for Opus
+		ClockRate:   48000,                                    // Standard for Opus
+		Channels:    2,                                        // Stereo for Opus
+		SDPFmtpLine: "minptime=10;maxptime=10;useinbandfec=1", // Common SDP parameters for Opus
 		RTCPFeedback: []webrtc.RTCPFeedback{
 			{Type: "nack"},
 			{Type: "nack", Parameter: "pli"},
@@ -220,10 +247,13 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription) (*webr
 	}
 
 	videoStreamer := CreateMediaStreamer(5005, "0.0.0.0", "video/H264", videoTrack)
-	go videoStreamer.startReader()
 
 	audioStreamer := CreateMediaStreamer(5006, "0.0.0.0", "audio/opus", audioTrack)
-	go audioStreamer.startReader()
+
+	MediaMutex.Lock()
+	VideoMediaMap[rtcId] = videoStreamer
+	AudioMediaMap[rtcId] = audioStreamer
+	MediaMutex.Unlock()
 
 	_, err = peerConnection.AddTrack(videoTrack)
 	if err != nil {
@@ -276,8 +306,17 @@ func CreateMediaStreamer(Port uint16, Hostname string, MimeType string, WebRTCTr
 	}
 }
 
-func (s *RTPMediaStreamer) startReader() {
-	address := fmt.Sprintf("%s:%d", s.Hostname, s.Port)
+func StreamReader(streamerType string, hostname string, port uint16) error {
+	var streamMap *map[string]RTPMediaStreamer
+	switch streamerType {
+	case "video":
+		streamMap = &VideoMediaMap
+	case "audio":
+		streamMap = &AudioMediaMap
+	default:
+		return errors.New("invalid streamerType")
+	}
+	address := fmt.Sprintf("%s:%d", hostname, port)
 	fmt.Println("starting UDP stream on: " + address)
 
 	udpAddr, err := net.ResolveUDPAddr("udp", address)
@@ -308,12 +347,17 @@ func (s *RTPMediaStreamer) startReader() {
 			log.Printf("Error parsing packet")
 			continue
 		}
+		MediaMutex.Lock()
 
-		err = s.WebRTCTrack.WriteRTP(&packet)
-		if err != nil {
-			log.Printf("Error adding pcket to track")
-			continue
+		for _, mStreamer := range *streamMap {
+			err = mStreamer.WebRTCTrack.WriteRTP(&packet)
+			if err != nil {
+				log.Printf("Error adding pcket to track")
+				continue
+			}
 		}
+		MediaMutex.Unlock()
 
 	}
+
 }

@@ -28,9 +28,7 @@ ffmpeg -f dshow -framerate 30 -i video="FHD Camera" -vcodec libx264 -pix_fmt yuv
 
 
 audio + sdp_file
-ffmpeg -f dshow -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -acodec libopus -b:a 64k -ar 48000 -ac 2 -application lowdelay -frame_duration 10 -rtbufsize 64M -preset ultrafast -tune zerolatency -f rtp -sdp_file audio.sdp rtp://127.0.0.1:5006
-
-
+ffmpeg -f dshow -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -acodec libopus -b:a 64k -ar 48000 -ac 2 -application voip -frame_duration 5 -fflags nobuffer -flags low_delay -use_wallclock_as_timestamps 1 -f rtp -sdp_file audio.sdp rtp://127.0.0.1:5006
 
 
 ```
