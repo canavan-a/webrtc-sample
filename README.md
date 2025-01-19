@@ -24,11 +24,17 @@ ffmpeg -f dshow -framerate 30 -i video="FHD Camera":audio="Microphone Array (Int
 # opus and h264 data
 
 video + sdp_file
-ffmpeg -f dshow -framerate 30 -i video="FHD Camera" -vcodec libx264 -pix_fmt yuv420p -preset ultrafast -tune zerolatency -crf 23 -x264-params "keyint=30:min-keyint=30:scenecut=0" -s 640x360 -rtbufsize 64M -f rtp -sdp_file video.sdp rtp://127.0.0.1:5005
+ffmpeg -f dshow -framerate 30 -i video="FHD Camera" -vcodec libx264 -pix_fmt yuv420p -preset ultrafast -tune zerolatency -crf 23 -x264-params "keyint=30:min-keyint=30:scenecut=0" -s 640x360 -rtbufsize 64M -use_wallclock_as_timestamps 1 -f rtp -sdp_file video.sdp rtp://127.0.0.1:5005
 
 
-audio + sdp_file
-ffmpeg -f dshow -i audio="Microphone Array (Intel® Smart Sound Technology for Digital Microphones)" -acodec libopus -b:a 64k -ar 48000 -ac 2 -application voip -frame_duration 5 -fflags nobuffer -flags low_delay -use_wallclock_as_timestamps 1 -f rtp -sdp_file audio.sdp rtp://127.0.0.1:5006
+
+usb:
+Microphone (usb microphone)
+
+ffmpeg -f dshow -i audio="Microphone (usb microphone)" -acodec libopus -b:a 64k -ar 48000 -ac 2 -application voip -frame_duration 20 -fflags nobuffer -flags low_delay -use_wallclock_as_timestamps 1 -f rtp -sdp_file audio.sdp rtp://127.0.0.1:5006
+
+
+
 
 
 ```

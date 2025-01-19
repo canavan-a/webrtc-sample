@@ -23,6 +23,9 @@ export const Home = () => {
         urls: [...STUN_SERVERS],
       },
     ],
+    iceTransportPolicy: "all", // Allow both peer-to-peer and relay transport
+    bundlePolicy: "max-bundle", // Ensures only one ICE candidate for both audio/video
+    rtcpMuxPolicy: "require",
   };
   const pc = new RTCPeerConnection(servers);
 
@@ -43,6 +46,8 @@ export const Home = () => {
     const offerOptions = {
       offerToReceiveAudio: true,
       offerToReceiveVideo: true,
+      voiceActivityDetection: false,
+      iceRestart: true,
     };
 
     const offer = await pc.createOffer(offerOptions);

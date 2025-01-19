@@ -20,6 +20,12 @@ import (
 
 func main() {
 
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	fmt.Println("staring server")
+
 	// using WebRTC streaming with ws relay server
 	go func() {
 		fmt.Println("starting video stream")
@@ -49,6 +55,8 @@ func main() {
 	})
 
 	r.GET("/relay", handleRelayServer)
+
+	fmt.Println("server started")
 
 	r.Run(":6789")
 
@@ -235,20 +243,17 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription, rtcId 
 
 	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
 		MimeType:    "audio/opus",
-		ClockRate:   48000,                                    // Standard for Opus
-		Channels:    2,                                        // Stereo for Opus
-		SDPFmtpLine: "minptime=10;maxptime=10;useinbandfec=1", // Common SDP parameters for Opus
-		RTCPFeedback: []webrtc.RTCPFeedback{
-			{Type: "nack"},
-			{Type: "nack", Parameter: "pli"},
-		}}, "audio", "rtcAudioStream")
+		ClockRate:   48000, // Standard for G.722
+		Channels:    1,     // G.722 is mono (1 channel)
+		SDPFmtpLine: "ptime=0",
+	}, "audio", "rtcAudioStream")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	videoStreamer := CreateMediaStreamer(5005, "0.0.0.0", "video/H264", videoTrack)
+	videoStreamer := CreateMediaStreamer(5005, "0.0.0.0", videoTrack)
 
-	audioStreamer := CreateMediaStreamer(5006, "0.0.0.0", "audio/opus", audioTrack)
+	audioStreamer := CreateMediaStreamer(5006, "0.0.0.0", audioTrack)
 
 	MediaMutex.Lock()
 	VideoMediaMap[rtcId] = videoStreamer
@@ -300,9 +305,9 @@ type RTPMediaStreamer struct {
 	WebRTCTrack *webrtc.TrackLocalStaticRTP
 }
 
-func CreateMediaStreamer(Port uint16, Hostname string, MimeType string, WebRTCTrack *webrtc.TrackLocalStaticRTP) RTPMediaStreamer {
+func CreateMediaStreamer(Port uint16, Hostname string, WebRTCTrack *webrtc.TrackLocalStaticRTP) RTPMediaStreamer {
 	return RTPMediaStreamer{
-		Port: Port, Hostname: Hostname, MimeType: MimeType, WebRTCTrack: WebRTCTrack,
+		Port: Port, Hostname: Hostname, WebRTCTrack: WebRTCTrack,
 	}
 }
 
@@ -347,6 +352,7 @@ func StreamReader(streamerType string, hostname string, port uint16) error {
 			log.Printf("Error parsing packet")
 			continue
 		}
+
 		MediaMutex.Lock()
 
 		for _, mStreamer := range *streamMap {

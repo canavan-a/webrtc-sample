@@ -97,7 +97,7 @@ func connectToStreams() {
 		log.Fatal(err)
 	}
 
-	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, "audio", "rtcAudiooStream")
+	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/G722"}, "audio", "rtcAudiooStream")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func connectToStreams() {
 	videoStreamer := CreateMediaStreamer(5005, "0.0.0.0", "video/H264", videoTrack)
 	go videoStreamer.startReader()
 
-	audioStreamer := CreateMediaStreamer(5006, "0.0.0.0", "audio/opus", audioTrack)
+	audioStreamer := CreateMediaStreamer(5006, "0.0.0.0", "audio/G722", audioTrack)
 	go audioStreamer.startReader()
 
 	select {}
