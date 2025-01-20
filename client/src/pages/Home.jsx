@@ -12,7 +12,7 @@ export const Home = () => {
   const videoRef = useRef(null);
 
   const [offer, setOffer] = useState(null);
-  const signalingServer = new WebSocket("ws://192.168.1.153:6789/relay");
+  const signalingServer = new WebSocket("ws://localhost:6789/relay");
 
   signalingServer.onopen = () => {
     console.log("ws open");

@@ -32,11 +32,11 @@ func main() {
 		err := StreamReader("video", "0.0.0.0", 5005)
 		panic(err)
 	}()
-	go func() {
-		fmt.Println("starting audio stream")
-		err := StreamReader("audio", "0.0.0.0", 5006)
-		panic(err)
-	}()
+	// go func() {
+	// 	fmt.Println("starting audio stream")
+	// 	err := StreamReader("audio", "0.0.0.0", 5006)
+	// 	panic(err)
+	// }()
 
 	r := gin.Default()
 	err := godotenv.Load()
@@ -198,7 +198,7 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription, rtcId 
 
 	peerConnection, err := webrtc.NewPeerConnection(configuration)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	err = peerConnection.SetRemoteDescription(offer)
@@ -238,7 +238,7 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription, rtcId 
 				{Type: "nack", Parameter: "pli"},
 			}}, "video", "rtcVideoStream")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
@@ -248,7 +248,7 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription, rtcId 
 		SDPFmtpLine: "ptime=0",
 	}, "audio", "rtcAudioStream")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	videoStreamer := CreateMediaStreamer(5005, "0.0.0.0", videoTrack)
@@ -262,36 +262,36 @@ func initPeerConnection(clientId string, offer webrtc.SessionDescription, rtcId 
 
 	_, err = peerConnection.AddTrack(videoTrack)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	_, err = peerConnection.AddTrack(audioTrack)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Create an offer first to set remote description (you may need to adjust this depending on your setup)
 	_, err = peerConnection.CreateOffer(nil)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	var myAnswerOption webrtc.AnswerOptions
 	mySDP, err := peerConnection.CreateAnswer(&myAnswerOption)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	fmt.Println("answer sdp IS: ", mySDP)
 
 	err = peerConnection.SetLocalDescription(mySDP)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	Mutex.Lock()
 	err = Clients[clientId].WebsocketConn.WriteJSON(mySDP)
 	Mutex.Unlock()
 	if err != nil {
-		log.Fatal()
+		return nil, err
 	}
 
 	return peerConnection, nil
